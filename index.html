@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Transfer tracker</title>
+<meta name="theme-color" content="#0a0c11">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Transfers">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: calc(20px + env(safe-area-inset-top)) 13px
+             calc(44px + env(safe-area-inset-bottom)) 13px;
+    background: radial-gradient(900px 380px at 50% -170px, #10233a 0%, transparent 70%), #0a0c11;
+    color: #f2f5fa;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 470px; margin: 0 auto; }
+  .title { font-size: 25px; font-weight: 800; letter-spacing: -.025em; }
+  .stampbar { display: flex; align-items: center; gap: 10px; margin: 8px 0 15px; }
+  .stamp { font-size: 12px; color: #838ea3; flex: 1; }
+  .stamp b { color: #4d9fff; font-weight: 600; }
+  .reload {
+    flex: none; width: 30px; height: 30px; border-radius: 9px;
+    background: #141922; border: 1px solid #252c3a; color: #838ea3;
+    font-size: 16px; line-height: 1; font-family: inherit;
+  }
+  .tabs {
+    display: flex; gap: 4px; background: #141922; border: 1px solid #252c3a;
+    border-radius: 12px; padding: 4px; margin-bottom: 15px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 1 0 auto; padding: 9px 12px; border-radius: 9px; white-space: nowrap;
+    font-size: 12.5px; font-weight: 600; color: #838ea3;
+    border: none; background: none; font-family: inherit;
+  }
+  .tab.on { background: #2f7fe0; color: #fff; }
+  .pane { display: none; }
+  .pane.on { display: block; }
+  .card {
+    background: #141922; border: 1px solid #252c3a;
+    border-radius: 15px; overflow: hidden; margin-bottom: 14px;
+  }
+  .head { padding: 14px 16px 11px; border-bottom: 1px solid #252c3a; }
+  .head h2 { margin: 0; font-size: 17px; font-weight: 700; }
+  .head p { margin: 3px 0 0; font-size: 12px; color: #838ea3; }
+  .row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; border-bottom: 1px solid #1c2029;
+  }
+  .row:last-of-type { border-bottom: none; }
+  .row.lowconf { opacity: .72; }
+  .pos {
+    flex: none; width: 32px; text-align: center; font-size: 10px;
+    font-weight: 800; padding: 3px 0; border-radius: 6px; letter-spacing: .04em;
+  }
+  .p1 { background: #3b2f00; color: #f0c14b; }
+  .p2 { background: #10304a; color: #6cc0ff; }
+  .p3 { background: #113626; color: #4fd490; }
+  .p4 { background: #3c1420; color: #ff7a92; }
+  .who { flex: 1; min-width: 0; }
+  .pname { font-size: 14px; font-weight: 600; }
+  .club { font-size: 10.5px; color: #838ea3; margin-left: 6px; font-weight: 500; }
+  .meta { font-size: 10.5px; color: #838ea3; margin-top: 2px; }
+  .note-inline { font-size: 10.5px; color: #f0b429; margin-top: 2px; }
+  .note-inline.warn { padding: 0 14px 11px; }
+  .fixes { display: flex; gap: 2px; flex: none; }
+  .fixes i {
+    display: block; width: 15px; height: 15px; border-radius: 3px;
+    font-size: 9px; font-weight: 700; line-height: 15px; text-align: center;
+    font-style: normal;
+  }
+  .d1 { background: #1b5e35; color: #9ff5c0; }
+  .d2 { background: #23603a; color: #a8f0c2; }
+  .d3 { background: #2c313c; color: #aab4c5; }
+  .d4 { background: #5c2130; color: #ffb0be; }
+  .d5 { background: #74152a; color: #ffc2cd; }
+  .d0 { background: #1c2029; color: #5a6478; }
+  .val { text-align: right; min-width: 44px; flex: none; }
+  .num { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .unit { font-size: 9px; color: #838ea3; }
+  .swap { border-bottom: 1px solid #1c2029; padding: 12px 14px 13px; }
+  .swap:last-of-type { border-bottom: none; }
+  .swaphead { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+  .gain {
+    background: #1e5f3a; color: #8bf0b5; font-size: 12px; font-weight: 800;
+    padding: 3px 9px; border-radius: 20px;
+  }
+  .swaplabel { font-size: 10.5px; color: #838ea3; text-transform: uppercase;
+    letter-spacing: .07em; }
+  .leg { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+  .tag {
+    font-size: 9px; font-weight: 800; padding: 3px 6px; border-radius: 5px;
+    letter-spacing: .05em; flex: none; width: 42px; text-align: center;
+  }
+  .add .tag { background: #14432c; color: #6ee7a6; }
+  .drop .tag { background: #45202a; color: #ff9aad; }
+  .pn { font-size: 14px; font-weight: 600; flex: 1; min-width: 0; }
+  .cl { font-size: 10.5px; color: #838ea3; flex: none; }
+  .pv { font-size: 14px; font-weight: 700; flex: none; min-width: 34px;
+    text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { padding: 30px 18px; text-align: center; font-size: 13px; color: #838ea3; }
+  .note { padding: 11px 16px; font-size: 11.5px; color: #838ea3; line-height: 1.45;
+    border-top: 1px solid #1c2029; }
+  .note b { color: #f2f5fa; }
+  footer { text-align: center; font-size: 11px; color: #4a5468; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="title">Nottinghamburglars</div>
+  <div class="stampbar">
+    <div class="stamp">Transfer tracker &middot; next <b>GW2</b>
+      &middot; updated Wed 26 Aug, 1:10 PM</div>
+    <button id="reload" class="reload">&#8635;</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="moves">Moves</button>
+    <button class="tab" data-tab="roster">My roster</button>
+    <button class="tab" data-tab="free">Free agents</button>
+  </div>
+
+  <div class="pane on" data-pane="moves">
+    <section class="card"><div class="head"><h2>No moves suggested</h2><p>Best single-week move for GW2</p></div><div class="empty">Nothing in the free agent pool clears the 0.8 pts/gw threshold right now.</div></section>
+    <section class="card"><div class="head"><h2>No moves suggested</h2><p>Best move across GW2&ndash;6</p></div><div class="empty">Nothing in the free agent pool clears the 0.8 pts/gw threshold right now.</div></section>
+    <section class="card"><div class="head"><h2>How this is worked out</h2>
+      <p>So you can argue with it</p></div>
+      <div class="note">
+      Each player gets a projected points-per-gameweek from three parts:
+      <b>40%</b> season scoring rate scaled by minutes,
+      <b>30%</b> recent form, and
+      <b>30%</b> underlying numbers &mdash; expected goals
+      and assists, clean sheet odds from expected goals conceded, save rate for
+      keepers, and defensive contributions. That's multiplied by injury
+      availability, then by fixture difficulty over the window.
+      Faded rows and "small sample" flags mean there isn't enough football
+      played yet to trust the number. Only same-position swaps are suggested,
+      since draft squads must stay legal at 2/5/5/3.
+      </div></section>
+  </div>
+
+  <div class="pane" data-pane="roster"><section class="card"><div class="head"><h2>Roster not found</h2><p>Check the MY_TEAM setting</p></div></section></div>
+  <div class="pane" data-pane="free"><section class="card"><div class="head"><h2>GK</h2><p>Top 10 available</p></div><div class="row lowconf"><div class="pos p1">GK</div><div class="who"><div class="pname">Tzolakis<span class="club">HUL</span></div><div class="meta">form 10.0 &middot; 90' &middot; 10pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d2" title="GW2 difficulty 2">2</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d4" title="GW4 difficulty 4">4</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">5.6</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p1">GK</div><div class="who"><div class="pname">Trafford<span class="club">LEE</span></div><div class="meta">form 9.0 &middot; 90' &middot; 9pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d5" title="GW6 difficulty 5">5</i></span><div class="val"><div class="num">5.3</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p1">GK</div><div class="who"><div class="pname">Scherpen<span class="club">IPS</span></div><div class="meta">form 2.0 &middot; 90' &middot; 2pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d4" title="GW3 difficulty 4">4</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">1.9</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p1">GK</div><div class="who"><div class="pname">Kinsky<span class="club">TOT</span></div><div class="meta">form 2.0 &middot; 90' &middot; 2pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d2" title="GW2 difficulty 2">2</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d4" title="GW6 difficulty 4">4</i></span><div class="val"><div class="num">1.7</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p1">GK</div><div class="who"><div class="pname">Horníček<span class="club">NEW</span></div><div class="meta">form 1.0 &middot; 90' &middot; 1pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d2" title="GW5 difficulty 2">2</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">1.3</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p1">GK</div><div class="who"><div class="pname">Rushworth<span class="club">COV</span></div><div class="meta">form 1.0 &middot; 90' &middot; 1pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d2" title="GW2 difficulty 2">2</i><i class="d5" title="GW3 difficulty 5">5</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">1.2</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p1">GK</div><div class="who"><div class="pname">M.Bizot<span class="club">AVL</span></div><div class="meta">form 1.0 &middot; 90' &middot; 1pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d2" title="GW3 difficulty 2">2</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">1.1</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p1">GK</div><div class="who"><div class="pname">Arrizabalaga<span class="club">ARS</span></div><div class="meta">form 0.0 &middot; 0' &middot; 0pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d4" title="GW3 difficulty 4">4</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">0.0</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p1">GK</div><div class="who"><div class="pname">Meslier<span class="club">ARS</span></div><div class="meta">form 0.0 &middot; 0' &middot; 0pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d4" title="GW3 difficulty 4">4</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">0.0</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p1">GK</div><div class="who"><div class="pname">Forster<span class="club">BOU</span></div><div class="meta">form 0.0 &middot; 0' &middot; 0pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d4" title="GW6 difficulty 4">4</i></span><div class="val"><div class="num">0.0</div><div class="unit">pts/gw</div></div></div></section><section class="card"><div class="head"><h2>DEF</h2><p>Top 10 available</p></div><div class="row lowconf"><div class="pos p2">DEF</div><div class="who"><div class="pname">De Cuyper<span class="club">BHA</span></div><div class="meta">form 17.0 &middot; 77' &middot; 17pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d2" title="GW3 difficulty 2">2</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">10.8</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p2">DEF</div><div class="who"><div class="pname">Mendy<span class="club">HUL</span></div><div class="meta">form 15.0 &middot; 63' &middot; 15pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d2" title="GW2 difficulty 2">2</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d4" title="GW4 difficulty 4">4</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">7.9</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p2">DEF</div><div class="who"><div class="pname">Kayode<span class="club">BRE</span></div><div class="meta">form 13.0 &middot; 75' &middot; 13pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d2" title="GW3 difficulty 2">2</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d4" title="GW6 difficulty 4">4</i></span><div class="val"><div class="num">7.4</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p2">DEF</div><div class="who"><div class="pname">Bijol<span class="club">LEE</span></div><div class="meta">form 10.0 &middot; 90' &middot; 10pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d5" title="GW6 difficulty 5">5</i></span><div class="val"><div class="num">6.1</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p2">DEF</div><div class="who"><div class="pname">Justin<span class="club">LEE</span></div><div class="meta">form 10.0 &middot; 90' &middot; 10pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d5" title="GW6 difficulty 5">5</i></span><div class="val"><div class="num">5.9</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p2">DEF</div><div class="who"><div class="pname">Ajayi<span class="club">HUL</span></div><div class="meta">form 14.0 &middot; 63' &middot; 14pts </div><div class="note-inline">Hamstring injury - 75% chance of playing, small sample</div></div><span class="fixes"><i class="d2" title="GW2 difficulty 2">2</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d4" title="GW4 difficulty 4">4</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">5.8</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p2">DEF</div><div class="who"><div class="pname">Ajer<span class="club">BRE</span></div><div class="meta">form 8.0 &middot; 90' &middot; 8pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d2" title="GW3 difficulty 2">2</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d4" title="GW6 difficulty 4">4</i></span><div class="val"><div class="num">5.2</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p2">DEF</div><div class="who"><div class="pname">Egan<span class="club">HUL</span></div><div class="meta">form 8.0 &middot; 90' &middot; 8pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d2" title="GW2 difficulty 2">2</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d4" title="GW4 difficulty 4">4</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">4.8</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p2">DEF</div><div class="who"><div class="pname">Wieffer<span class="club">BHA</span></div><div class="meta">form 7.0 &middot; 77' &middot; 7pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d2" title="GW3 difficulty 2">2</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">4.5</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p2">DEF</div><div class="who"><div class="pname">Vuskovic<span class="club">BHA</span></div><div class="meta">form 6.0 &middot; 90' &middot; 6pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d2" title="GW3 difficulty 2">2</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">4.1</div><div class="unit">pts/gw</div></div></div></section><section class="card"><div class="head"><h2>MID</h2><p>Top 10 available</p></div><div class="row lowconf"><div class="pos p3">MID</div><div class="who"><div class="pname">Hinshelwood<span class="club">BHA</span></div><div class="meta">form 16.0 &middot; 63' &middot; 16pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d2" title="GW3 difficulty 2">2</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">9.2</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p3">MID</div><div class="who"><div class="pname">M.Sangaré<span class="club">BRE</span></div><div class="meta">form 14.0 &middot; 75' &middot; 14pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d2" title="GW3 difficulty 2">2</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d4" title="GW6 difficulty 4">4</i></span><div class="val"><div class="num">7.5</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p3">MID</div><div class="who"><div class="pname">Stach<span class="club">LEE</span></div><div class="meta">form 13.0 &middot; 90' &middot; 13pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d5" title="GW6 difficulty 5">5</i></span><div class="val"><div class="num">7.2</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p3">MID</div><div class="who"><div class="pname">Lewis-Potter<span class="club">BRE</span></div><div class="meta">form 10.0 &middot; 90' &middot; 10pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d2" title="GW3 difficulty 2">2</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d4" title="GW6 difficulty 4">4</i></span><div class="val"><div class="num">6.3</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p3">MID</div><div class="who"><div class="pname">Janelt<span class="club">BRE</span></div><div class="meta">form 9.0 &middot; 90' &middot; 9pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d2" title="GW3 difficulty 2">2</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d4" title="GW6 difficulty 4">4</i></span><div class="val"><div class="num">5.6</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p3">MID</div><div class="who"><div class="pname">Ndiaye<span class="club">EVE</span></div><div class="meta">form 9.0 &middot; 90' &middot; 9pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d4" title="GW3 difficulty 4">4</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d2" title="GW5 difficulty 2">2</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">5.6</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p3">MID</div><div class="who"><div class="pname">Xhaka<span class="club">SUN</span></div><div class="meta">form 9.0 &middot; 90' &middot; 9pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d2" title="GW2 difficulty 2">2</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d4" title="GW4 difficulty 4">4</i><i class="d5" title="GW5 difficulty 5">5</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">5.1</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p3">MID</div><div class="who"><div class="pname">Elanga<span class="club">NEW</span></div><div class="meta">form 9.0 &middot; 75' &middot; 9pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d2" title="GW5 difficulty 2">2</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">4.9</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p3">MID</div><div class="who"><div class="pname">Armstrong<span class="club">EVE</span></div><div class="meta">form 8.0 &middot; 90' &middot; 8pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d4" title="GW3 difficulty 4">4</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d2" title="GW5 difficulty 2">2</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">4.7</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p3">MID</div><div class="who"><div class="pname">King<span class="club">FUL</span></div><div class="meta">form 7.0 &middot; 90' &middot; 7pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d3" title="GW2 difficulty 3">3</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d4" title="GW4 difficulty 4">4</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">4.1</div><div class="unit">pts/gw</div></div></div></section><section class="card"><div class="head"><h2>FWD</h2><p>Top 10 available</p></div><div class="row lowconf"><div class="pos p4">FWD</div><div class="who"><div class="pname">Emersonn<span class="club">IPS</span></div><div class="meta">form 9.0 &middot; 65' &middot; 9pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d4" title="GW3 difficulty 4">4</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">5.1</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p4">FWD</div><div class="who"><div class="pname">Georginio<span class="club">BHA</span></div><div class="meta">form 5.0 &middot; 90' &middot; 5pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d2" title="GW3 difficulty 2">2</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">3.3</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p4">FWD</div><div class="who"><div class="pname">McBurnie<span class="club">HUL</span></div><div class="meta">form 5.0 &middot; 90' &middot; 5pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d2" title="GW2 difficulty 2">2</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d4" title="GW4 difficulty 4">4</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">3.0</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p4">FWD</div><div class="who"><div class="pname">Thomas-Asante<span class="club">COV</span></div><div class="meta">form 2.0 &middot; 69' &middot; 2pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d2" title="GW2 difficulty 2">2</i><i class="d5" title="GW3 difficulty 5">5</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">1.4</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p4">FWD</div><div class="who"><div class="pname">Simms<span class="club">COV</span></div><div class="meta">form 2.0 &middot; 69' &middot; 2pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d2" title="GW2 difficulty 2">2</i><i class="d5" title="GW3 difficulty 5">5</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">1.3</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p4">FWD</div><div class="who"><div class="pname">Nketiah<span class="club">CRY</span></div><div class="meta">form 1.0 &middot; 55' &middot; 1pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">0.4</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p4">FWD</div><div class="who"><div class="pname">Strand Larsen<span class="club">CRY</span></div><div class="meta">form 1.0 &middot; 27' &middot; 1pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">0.2</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p4">FWD</div><div class="who"><div class="pname">Kostoulas<span class="club">BHA</span></div><div class="meta">form 1.0 &middot; 26' &middot; 1pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d2" title="GW3 difficulty 2">2</i><i class="d2" title="GW4 difficulty 2">2</i><i class="d4" title="GW5 difficulty 4">4</i><i class="d3" title="GW6 difficulty 3">3</i></span><div class="val"><div class="num">0.2</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p4">FWD</div><div class="who"><div class="pname">Akpom<span class="club">IPS</span></div><div class="meta">form 1.0 &middot; 24' &middot; 1pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d4" title="GW2 difficulty 4">4</i><i class="d4" title="GW3 difficulty 4">4</i><i class="d3" title="GW4 difficulty 3">3</i><i class="d3" title="GW5 difficulty 3">3</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">0.2</div><div class="unit">pts/gw</div></div></div><div class="row lowconf"><div class="pos p4">FWD</div><div class="who"><div class="pname">Isidor<span class="club">SUN</span></div><div class="meta">form 1.0 &middot; 23' &middot; 1pts </div><div class="note-inline">small sample</div></div><span class="fixes"><i class="d2" title="GW2 difficulty 2">2</i><i class="d3" title="GW3 difficulty 3">3</i><i class="d4" title="GW4 difficulty 4">4</i><i class="d5" title="GW5 difficulty 5">5</i><i class="d2" title="GW6 difficulty 2">2</i></span><div class="val"><div class="num">0.2</div><div class="unit">pts/gw</div></div></div></section></div>
+
+  <footer>Fixture colours: green easy, red hard &middot; rebuilt daily</footer>
+</div>
+
+<script>
+(function () {
+  var tabs = document.querySelectorAll('.tab');
+  var panes = document.querySelectorAll('.pane');
+  var order = ['moves', 'roster', 'free'];
+  function show(n) {
+    tabs.forEach(function (t) { t.classList.toggle('on', t.dataset.tab === n); });
+    panes.forEach(function (p) { p.classList.toggle('on', p.dataset.pane === n); });
+    try { history.replaceState(null, '', '#' + n); } catch (e) {}
+    window.scrollTo(0, 0);
+  }
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () { show(t.dataset.tab); });
+  });
+  var r = document.getElementById('reload');
+  if (r) r.addEventListener('click', function () {
+    location.replace(location.pathname + '?t=' + Date.now() + location.hash);
+  });
+  var s = (location.hash || '').replace('#', '');
+  show(order.indexOf(s) >= 0 ? s : 'moves');
+})();
+</script>
+
+</body>
+</html>
