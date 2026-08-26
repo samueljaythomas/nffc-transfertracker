@@ -73,11 +73,26 @@ fixtures = get(f"{CLASSIC}/fixtures/")
 
 league_name = details["league"]["name"]
 entries = {e["id"]: e["entry_name"] for e in details["league_entries"]}
-my_id = next((i for i, n in entries.items()
-              if n.strip().lower() == MY_TEAM.strip().lower()), None)
-if my_id is None:
+
+
+def _key(s):
+    return "".join(c for c in (s or "").lower() if c.isalnum())
+
+
+me = next((e for e in details["league_entries"]
+           if _key(e["entry_name"]) == _key(MY_TEAM)), None)
+if me is None:
+    me = next((e for e in details["league_entries"]
+               if _key(MY_TEAM) and _key(MY_TEAM) in _key(e["entry_name"])), None)
+if me is None:
     raise SystemExit(f"Could not find a team called {MY_TEAM!r}. "
                      f"Teams in this league: {list(entries.values())}")
+
+# A league entry has two ids: "id" (used in matches/standings) and "entry_id"
+# (used by element_status.owner). Accept either so ownership always resolves.
+my_ids = {v for v in (me.get("id"), me.get("entry_id")) if v is not None}
+my_id = me["id"]
+MY_TEAM = me["entry_name"]
 
 owner_of = {es["element"]: es.get("owner")
             for es in choices.get("element_status", [])}
@@ -244,7 +259,7 @@ for el in draft_boot["elements"]:
         "news": el.get("news") or "",
     }
 
-roster = [p for p in players.values() if p["owner"] == my_id]
+roster = [p for p in players.values() if p["owner"] in my_ids]
 free = [p for p in players.values() if p["owner"] is None
         and p["status"] not in ("u",)]
 
@@ -565,6 +580,12 @@ html = f"""<!DOCTYPE html>
 with open("index.html", "w", encoding="utf-8") as f:
     f.write(html)
 
-print(f"Roster: {len(roster)} players | free agents considered: {len(free)}")
+owned_total = sum(1 for p in players.values() if p["owner"] is not None)
+print(f"Matched team {MY_TEAM!r} -> ids {sorted(my_ids)}")
+print(f"Roster: {len(roster)} players | owned league-wide: {owned_total} "
+      f"| free agents considered: {len(free)}")
+if not roster and owned_total:
+    seen = sorted({p["owner"] for p in players.values() if p["owner"] is not None})
+    print(f"WARNING: no players matched. owner ids seen: {seen}")
 print(f"Suggestions: {len(swaps_short)} short, {len(swaps_long)} long")
 print(f"Built index.html for {league_name}, next {gw_label}")
